@@ -70,6 +70,10 @@
     ])] }] }));
     eq('mergeByName: one entry per ingredient', panela.length, 1);
     eq('mergeByName: mixed units in one line', A.shoppingLine(panela[0]), 'Queso panela — 1 rebanada + 70 g');
+    eq('buy amount rounds up pieces', A.formatBuyAmount(2.5, 'pz'), '3 pz (plan: 2 1/2)');
+    eq('buy amount keeps whole pieces', A.formatBuyAmount(3, 'pz'), '3 pz');
+    eq('buy amount keeps cups exact', A.formatBuyAmount(1.5, 'taza'), '1 1/2 tazas');
+    eq('shopping line rounds up', A.shoppingLine({ name: 'aguacate', qty: 0.75, unit: 'pz' }), 'Aguacate — 1 pz (plan: 3/4)');
 
     const sample = A.aggregate(buildSamplePlan());
     eq('sample: beef on 2 days', sample.find((i) => i.key === 'carne de res|g')?.qty, 500);

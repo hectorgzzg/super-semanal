@@ -251,8 +251,20 @@ export function formatParts(parts) {
   return parts.map((p) => formatAmount(p.qty, p.unit)).filter(Boolean).join(' + ');
 }
 
+// Units sold only as whole pieces at the store.
+const WHOLE_UNITS = new Set(['pz', 'lata', 'paquete', 'sobre', 'rebanada', 'diente']);
+
+/** Amount to buy: whole units rounded up, with the exact plan amount in parentheses. */
+export function formatBuyAmount(qty, unit) {
+  if (qty == null || !WHOLE_UNITS.has(unit) || Number.isInteger(Math.round(qty * 1000) / 1000)) {
+    return formatAmount(qty, unit);
+  }
+  return `${formatAmount(Math.ceil(qty - 1e-9), unit)} (plan: ${formatNumber(qty)})`;
+}
+
 export function shoppingLine(item) {
-  const amount = item.parts ? formatParts(item.parts) : formatAmount(item.qty, item.unit);
+  const parts = item.parts ?? [{ qty: item.qty, unit: item.unit }];
+  const amount = parts.map((p) => formatBuyAmount(p.qty, p.unit)).filter(Boolean).join(' + ');
   return amount ? `${capitalize(item.name)} — ${amount}` : capitalize(item.name);
 }
 
