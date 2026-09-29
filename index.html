@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2f7d4f">
+  <title>Súper semanal</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Súper semanal</h1>
+    <button id="open-settings" type="button" class="btn ghost">Ajustes</button>
+  </header>
+
+  <nav id="stepper" aria-label="Pasos">
+    <ol>
+      <li><button type="button" data-step="upload">1. Foto</button></li>
+      <li><button type="button" data-step="review">2. Revisar</button></li>
+      <li><button type="button" data-step="pantry">3. Despensa</button></li>
+      <li><button type="button" data-step="list">4. Lista</button></li>
+    </ol>
+  </nav>
+
+  <main id="app"></main>
+
+  <dialog id="settings">
+    <form method="dialog" class="stack">
+      <h2>Ajustes</h2>
+      <label class="field">Clave de API de Gemini
+        <input id="api-key" type="password" autocomplete="off" spellcheck="false" placeholder="AIza...">
+      </label>
+      <p class="hint">
+        Consíguela gratis en
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio</a>.
+        Se guarda solo en este navegador.
+      </p>
+      <label class="field">Modelo
+        <input id="model" type="text" autocomplete="off" spellcheck="false">
+      </label>
+      <p class="hint warn">
+        Privacidad: la foto de tu plan se envía a Google para leerla. En el plan gratuito, Google puede usar
+        esos datos para mejorar sus productos.
+      </p>
+      <h3>Básicos que siempre tienes</h3>
+      <ul id="staples-list" class="staples"></ul>
+      <menu class="row">
+        <button type="button" id="forget-key" class="btn ghost">Olvidar clave</button>
+        <button value="cancel" class="btn" formnovalidate>Cancelar</button>
+        <button value="save" class="btn primary">Guardar</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

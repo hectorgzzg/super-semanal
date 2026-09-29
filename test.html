@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Pruebas – aggregate.js</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 16px; }
+    .ok { color: #2f7d4f; }
+    .fail { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <h1>Pruebas de aggregate.js</h1>
+  <p id="summary"></p>
+  <ul id="results"></ul>
+  <script type="module">
+    import * as A from './aggregate.js';
+    import { buildSamplePlan } from './sample-plan.js';
+
+    const results = [];
+    const eq = (name, actual, expected) =>
+      results.push({ name, ok: JSON.stringify(actual) === JSON.stringify(expected), actual, expected });
+
+    eq('parseQty 1/4', A.parseQty('1/4'), 0.25);
+    eq('parseQty 1 1/2', A.parseQty('1 1/2'), 1.5);
+    eq('parseQty ½', A.parseQty('½'), 0.5);
+    eq('parseQty 0,5', A.parseQty('0,5'), 0.5);
+    eq('parseQty invalid', A.parseQty('abc'), null);
+
+    eq('normalizeName plural', A.normalizeName('Jitomates'), A.normalizeName('jitomate'));
+    eq('normalizeName accents', A.normalizeName('Limones'), A.normalizeName('limón'));
+    eq('normalizeUnit kg', A.normalizeUnit('Kg'), { unit: 'g', factor: 1000 });
+    eq('normalizeUnit cucharadas', A.normalizeUnit('cucharadas'), { unit: 'cda', factor: 1 });
+
+    eq('parse line with unit', A.parseIngredientLine('2 rebanadas de pan integral'), { name: 'pan integral', qty: 2, unit: 'rebanada' });
+    eq('parse line fraction no unit', A.parseIngredientLine('1/4 aguacate'), { name: 'aguacate', qty: 0.25, unit: 'pz' });
+    eq('parse line glued unit', A.parseIngredientLine('250g carne de res'), { name: 'carne de res', qty: 250, unit: 'g' });
+    eq('parse line al gusto', A.parseIngredientLine('sal al gusto'), { name: 'sal', qty: null, unit: 'al gusto' });
+    eq('line roundtrip', A.parseIngredientLine(A.ingredientToLine({ name: 'avena', qty: 1.5, unit: 'taza' })), { name: 'avena', qty: 1.5, unit: 'taza' });
+
+    const meal = (slot, ingredients, crossedOut = false) => ({ slot, title: '', crossedOut, ingredients });
+    const plan = {
+      days: [
+        { day: 'Lunes', meals: [meal('Comida', [{ name: 'carne de res', qty: 250, unit: 'g' }, { name: 'aguacate', qty: 0.25, unit: 'pz' }])] },
+        { day: 'Martes', meals: [meal('Cena', [{ name: 'carne de res', qty: 250, unit: 'g' }], true)] },
+        { day: 'Jueves', meals: [meal('Comida', [{ name: 'Carne de Res', qty: 0.25, unit: 'kg' }, { name: 'aguacates', qty: 0.5, unit: 'pz' }, { name: 'aguacate', qty: 1, unit: 'taza' }])] },
+      ],
+    };
+    const items = A.aggregate(plan);
+    const find = (key) => items.find((i) => i.key === key);
+    eq('crossed-out meal excluded + kg summed', find('carne de res|g')?.qty, 500);
+    eq('fractions summed', A.formatAmount(find('aguacate|pz')?.qty, 'pz'), '3/4 pz');
+    eq('different units kept separate', items.length, 3);
+    eq('uses tracked', find('carne de res|g')?.uses, ['Lunes · Comida', 'Jueves · Comida']);
+
+    eq('formatAmount kg', A.formatAmount(1500, 'g'), '1.5 kg');
+    eq('formatAmount plural', A.formatAmount(2, 'taza'), '2 tazas');
+    eq('guessDepartment deli cheese', A.guessDepartment('Queso panela'), 'Deli');
+    eq('guessDepartment deli ham', A.guessDepartment('jamón de pavo'), 'Deli');
+    eq('guessDepartment chicharrón', A.guessDepartment('chicharrón de cerdo'), 'Abarrotes');
+    eq('guessDepartment dairy', A.guessDepartment('leche descremada'), 'Lácteos y huevo');
+    eq('guessDepartment longest match', A.guessDepartment('crema de cacahuate'), 'Abarrotes');
+    eq('guessDepartment pan vs panela', A.guessDepartment('pan integral'), 'Panadería y tortillas');
+
+    const text = A.toPlainText(A.groupByDepartment(items), 'Lista');
+    eq('plain text line', text.includes('☐ Carne de res — 500 g'), true);
+
+    const panela = A.mergeByName(A.aggregate({ days: [{ day: 'Lunes', meals: [meal('Desayuno', [
+      { name: 'queso panela', qty: 1, unit: 'rebanada' }, { name: 'Queso Panela', qty: 70, unit: 'g' },
+    ])] }] }));
+    eq('mergeByName: one entry per ingredient', panela.length, 1);
+    eq('mergeByName: mixed units in one line', A.shoppingLine(panela[0]), 'Queso panela — 1 rebanada + 70 g');
+
+    const sample = A.aggregate(buildSamplePlan());
+    eq('sample: beef on 2 days', sample.find((i) => i.key === 'carne de res|g')?.qty, 500);
+    eq('sample: no uncategorized items', sample.filter((i) => i.department === 'Otros').map((i) => i.name), []);
+
+    const failed = results.filter((r) => !r.ok);
+    document.getElementById('summary').textContent = `${results.length - failed.length}/${results.length} pruebas correctas`;
+    document.getElementById('summary').className = failed.length ? 'fail' : 'ok';
+    document.getElementById('results').replaceChildren(...results.map((r) => {
+      const li = document.createElement('li');
+      li.className = r.ok ? 'ok' : 'fail';
+      li.textContent = r.ok ? `✔ ${r.name}` : `✘ ${r.name} — esperado ${JSON.stringify(r.expected)}, obtenido ${JSON.stringify(r.actual)}`;
+      return li;
+    }));
+    window.testResults = results;
+  </script>
+</body>
+</html>
